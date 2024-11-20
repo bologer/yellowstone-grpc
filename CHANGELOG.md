@@ -12,15 +12,158 @@ The minor version will be incremented upon a breaking change and the patch versi
 
 ### Fixes
 
+- examples: fix commitment in TypeScript example ([#440](https://github.com/rpcpool/yellowstone-grpc/pull/440))
+- geyser: fix missed status messages ([#444](https://github.com/rpcpool/yellowstone-grpc/pull/444))
+
 ### Features
 
+- proto: use `gzip`/`zstd` features by default ([#436](https://github.com/rpcpool/yellowstone-grpc/pull/436))
+- geyser: optimize consuming of new filters ([#439](https://github.com/rpcpool/yellowstone-grpc/pull/439))
+- proto: add filter by lamports ([#369](https://github.com/rpcpool/yellowstone-grpc/pull/369))
+- geyser: use Arc wrapped messages in block message ([#446](https://github.com/rpcpool/yellowstone-grpc/pull/446))
+- node: remove generated grpc files ([#447](https://github.com/rpcpool/yellowstone-grpc/pull/447))
+- proto: add txn_signature filter ([#445](https://github.com/rpcpool/yellowstone-grpc/pull/445))
+- examples: add progress bar to client tool ([#456](https://github.com/rpcpool/yellowstone-grpc/pull/456))
+- proto: add mod `plugin` with `FilterNames` cache ([#458](https://github.com/rpcpool/yellowstone-grpc/pull/458))
+- proto: move enum Message from geyser crate ([#459](https://github.com/rpcpool/yellowstone-grpc/pull/459))
+
 ### Breaking
+
+- geyser: limit length of filter name ([#448](https://github.com/rpcpool/yellowstone-grpc/pull/448))
+- proto: change error type in mod `convert_from` ([#457](https://github.com/rpcpool/yellowstone-grpc/pull/457))
+- geyser: remove option `block_fail_action` ([#463](https://github.com/rpcpool/yellowstone-grpc/pull/463))
+
+## 2024-10-04
+
+- yellowstone-grpc-client-simple-2.0.0
+- yellowstone-grpc-client-2.0.0
+- yellowstone-grpc-geyser-2.0.0
+- yellowstone-grpc-proto-2.0.0
+
+### Features
+
+- solana: relax dependencies ([#430](https://github.com/rpcpool/yellowstone-grpc/pull/430))
+- tools: remove ([#431](https://github.com/rpcpool/yellowstone-grpc/pull/431))
+
+## 2024-09-12
+
+- yellowstone-grpc-client-1.16.2+solana.2.0.10
+- yellowstone-grpc-geyser-1.16.3+solana.2.0.10
+- yellowstone-grpc-proto-1.15.0+solana.2.0.10
+- yellowstone-grpc-tools-1.0.0-rc.12+solana.2.0.10
+
+### Features
+
+- solana: update to 2.0.10 ([#427](https://github.com/rpcpool/yellowstone-grpc/pull/427))
+
+## 2024-09-12
+
+- yellowstone-grpc-client-1.16.2+solana.2.0.9
+- yellowstone-grpc-geyser-1.16.3+solana.2.0.9
+- yellowstone-grpc-proto-1.15.0+solana.2.0.9
+- yellowstone-grpc-tools-1.0.0-rc.12+solana.2.0.9
+
+### Features
+
+- solana: update to 2.0.9 ([#425](https://github.com/rpcpool/yellowstone-grpc/pull/425))
+
+## 2024-09-03
+
+- yellowstone-grpc-client-1.16.2+solana.2.0.8
+- yellowstone-grpc-geyser-1.16.3+solana.2.0.8
+- yellowstone-grpc-proto-1.15.0+solana.2.0.8
+- yellowstone-grpc-tools-1.0.0-rc.12+solana.2.0.8
+
+### Features
+
+- solana: update to 2.0.8 ([#419](https://github.com/rpcpool/yellowstone-grpc/pull/419))
+
+## 2024-09-02
+
+- yellowstone-grpc-geyser-1.16.3+solana.2.0.7
+
+### Features
+
+- geyser: wrap message into `Box` in snapshot channel ([#418](https://github.com/rpcpool/yellowstone-grpc/pull/418))
+
+## 2024-08-26
+
+- yellowstone-grpc-client-1.16.2+solana.2.0.7
+- yellowstone-grpc-geyser-1.16.2+solana.2.0.7
+- yellowstone-grpc-proto-1.15.0+solana.2.0.7
+- yellowstone-grpc-tools-1.0.0-rc.12+solana.2.0.7
+
+### Features
+
+- solana: update to 2.0.7 ([#415](https://github.com/rpcpool/yellowstone-grpc/pull/415))
+
+## 2024-08-23
+
+- yellowstone-grpc-client-1.16.2+solana.2.0.5
+- yellowstone-grpc-geyser-1.16.2+solana.2.0.5
+- yellowstone-grpc-proto-1.15.0+solana.2.0.5
+- yellowstone-grpc-tools-1.0.0-rc.12+solana.2.0.5
+
+### Fixes
+
+- geyser: fix `x-request-snapshot` handler ([#413](https://github.com/rpcpool/yellowstone-grpc/pull/413))
+
+## 2024-08-22
+
+- yellowstone-grpc-client-1.16.1+solana.2.0.5
+- yellowstone-grpc-geyser-1.16.1+solana.2.0.5
+- yellowstone-grpc-proto-1.15.0+solana.2.0.5
+- yellowstone-grpc-tools-1.0.0-rc.12+solana.2.0.5
+
+### Fixes
+
+- example: fix tls root issue in rust example ([#404](https://github.com/rpcpool/yellowstone-grpc/pull/404))
+- geyser: fix filter update loop on snapshot ([#410](https://github.com/rpcpool/yellowstone-grpc/pull/410))
+
+### Features
+
+- geyser: handle `x-request-snapshot` on client request ([#411](https://github.com/rpcpool/yellowstone-grpc/pull/411))
+
+## 2024-08-09
+
+- yellowstone-grpc-client-1.16.0+solana.2.0.5
+- yellowstone-grpc-geyser-1.16.0+solana.2.0.5
+- yellowstone-grpc-proto-1.15.0+solana.2.0.5
+- yellowstone-grpc-tools-1.0.0-rc.12+solana.2.0.5
+
+### Features
+
+- solana: update to 2.0.5 ([#395](https://github.com/rpcpool/yellowstone-grpc/pull/395))
+
+## 2024-08-07
+
+- yellowstone-grpc-client-1.16.0+solana.2.0.4
+- yellowstone-grpc-geyser-1.16.0+solana.2.0.4
+- yellowstone-grpc-proto-1.15.0+solana.2.0.4
+- yellowstone-grpc-tools-1.0.0-rc.12+solana.2.0.4
+
+### Features
+
+- solana: update to 2.0.4 ([#390](https://github.com/rpcpool/yellowstone-grpc/pull/390))
+- geyser: add `zstd` support ([#391](https://github.com/rpcpool/yellowstone-grpc/pull/391))
+- deps: update `hyper` to 1 ([#392](https://github.com/rpcpool/yellowstone-grpc/pull/392))
+
+## 2024-07-12
+
+- yellowstone-grpc-client-1.16.0+solana.2.0.2
+- yellowstone-grpc-geyser-1.16.0+solana.2.0.2
+- yellowstone-grpc-proto-1.15.0+solana.2.0.2
+- yellowstone-grpc-tools-1.0.0-rc.12+solana.2.0.2
+
+### Features
+
+- solana: update to 2.0.2 ([#377](https://github.com/rpcpool/yellowstone-grpc/pull/377))
 
 ## 2024-07-12
 
 - yellowstone-grpc-client-1.15.0+solana.1.18.18
 - yellowstone-grpc-geyser-1.15.0+solana.1.18.18
-- yellowstone-grpc-proto-1.15.0+solana.1.18.18
+- yellowstone-grpc-proto-1.14.0+solana.1.18.18
 - yellowstone-grpc-tools-1.0.0-rc.11+solana.1.18.18
 
 ### Features
@@ -31,7 +174,7 @@ The minor version will be incremented upon a breaking change and the patch versi
 
 - yellowstone-grpc-client-1.15.0+solana.1.18.17
 - yellowstone-grpc-geyser-1.15.0+solana.1.18.17
-- yellowstone-grpc-proto-1.15.0+solana.1.18.17
+- yellowstone-grpc-proto-1.14.0+solana.1.18.17
 - yellowstone-grpc-tools-1.0.0-rc.11+solana.1.18.17
 
 ### Features

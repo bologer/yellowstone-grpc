@@ -1,34 +1,43 @@
 use {
     crate::{
         config::Config,
-        grpc::{GrpcService, Message},
-        prom::{self, PrometheusService, MESSAGE_QUEUE_SIZE},
+        grpc::GrpcService,
+        metrics::{self, PrometheusService},
     },
-    solana_geyser_plugin_interface::geyser_plugin_interface::{
+    agave_geyser_plugin_interface::geyser_plugin_interface::{
         GeyserPlugin, GeyserPluginError, ReplicaAccountInfoVersions, ReplicaBlockInfoVersions,
         ReplicaEntryInfoVersions, ReplicaTransactionInfoVersions, Result as PluginResult,
         SlotStatus,
     },
-    std::{concat, env, sync::Arc, time::Duration},
+    std::{
+        concat, env,
+        sync::{
+            atomic::{AtomicBool, Ordering},
+            Arc, Mutex,
+        },
+        time::Duration,
+    },
     tokio::{
         runtime::{Builder, Runtime},
         sync::{mpsc, Notify},
     },
+    yellowstone_grpc_proto::plugin::message::Message,
 };
 
 #[derive(Debug)]
 pub struct PluginInner {
     runtime: Runtime,
-    snapshot_channel: Option<crossbeam_channel::Sender<Option<Message>>>,
-    grpc_channel: mpsc::UnboundedSender<Arc<Message>>,
+    snapshot_channel: Mutex<Option<crossbeam_channel::Sender<Box<Message>>>>,
+    snapshot_channel_closed: AtomicBool,
+    grpc_channel: mpsc::UnboundedSender<Message>,
     grpc_shutdown: Arc<Notify>,
     prometheus: PrometheusService,
 }
 
 impl PluginInner {
     fn send_message(&self, message: Message) {
-        if self.grpc_channel.send(Arc::new(message)).is_ok() {
-            MESSAGE_QUEUE_SIZE.inc();
+        if self.grpc_channel.send(message).is_ok() {
+            metrics::message_queue_size_inc();
         }
     }
 }
@@ -71,7 +80,6 @@ impl GeyserPlugin for Plugin {
                 let (debug_client_tx, debug_client_rx) = mpsc::unbounded_channel();
                 let (snapshot_channel, grpc_channel, grpc_shutdown) = GrpcService::create(
                     config.grpc,
-                    config.block_fail_action,
                     config.debug_clients_http.then_some(debug_client_tx),
                     is_reload,
                 )
@@ -81,6 +89,7 @@ impl GeyserPlugin for Plugin {
                     config.prometheus,
                     config.debug_clients_http.then_some(debug_client_rx),
                 )
+                .await
                 .map_err(|error| GeyserPluginError::Custom(Box::new(error)))?;
                 Ok::<_, GeyserPluginError>((
                     snapshot_channel,
@@ -92,7 +101,8 @@ impl GeyserPlugin for Plugin {
 
         self.inner = Some(PluginInner {
             runtime,
-            snapshot_channel,
+            snapshot_channel: Mutex::new(snapshot_channel),
+            snapshot_channel_closed: AtomicBool::new(false),
             grpc_channel,
             grpc_shutdown,
             prometheus,
@@ -127,15 +137,22 @@ impl GeyserPlugin for Plugin {
                 ReplicaAccountInfoVersions::V0_0_3(info) => info,
             };
 
-            let message = Message::Account((account, slot, is_startup).into());
             if is_startup {
-                if let Some(channel) = &inner.snapshot_channel {
-                    match channel.send(Some(message)) {
-                        Ok(()) => MESSAGE_QUEUE_SIZE.inc(),
-                        Err(_) => panic!("failed to send message to startup queue: channel closed"),
+                if let Some(channel) = inner.snapshot_channel.lock().unwrap().as_ref() {
+                    let message = Message::Account((account, slot, is_startup).into());
+                    match channel.send(Box::new(message)) {
+                        Ok(()) => metrics::message_queue_size_inc(),
+                        Err(_) => {
+                            if !inner.snapshot_channel_closed.swap(true, Ordering::Relaxed) {
+                                log::error!(
+                                    "failed to send message to startup queue: channel closed"
+                                )
+                            }
+                        }
                     }
                 }
             } else {
+                let message = Message::Account((account, slot, is_startup).into());
                 inner.send_message(message);
             }
 
@@ -145,12 +162,7 @@ impl GeyserPlugin for Plugin {
 
     fn notify_end_of_startup(&self) -> PluginResult<()> {
         self.with_inner(|inner| {
-            if let Some(channel) = &inner.snapshot_channel {
-                match channel.send(None) {
-                    Ok(()) => MESSAGE_QUEUE_SIZE.inc(),
-                    Err(_) => panic!("failed to send message to startup queue: channel closed"),
-                }
-            }
+            let _snapshot_channel = inner.snapshot_channel.lock().unwrap().take();
             Ok(())
         })
     }
@@ -164,7 +176,7 @@ impl GeyserPlugin for Plugin {
         self.with_inner(|inner| {
             let message = Message::Slot((slot, parent, status).into());
             inner.send_message(message);
-            prom::update_slot_status(status, slot);
+            metrics::update_slot_status(status, slot);
             Ok(())
         })
     }
@@ -199,7 +211,7 @@ impl GeyserPlugin for Plugin {
                 ReplicaEntryInfoVersions::V0_0_2(entry) => entry,
             };
 
-            let message = Message::Entry(entry.into());
+            let message = Message::Entry(Arc::new(entry.into()));
             inner.send_message(message);
 
             Ok(())
@@ -215,10 +227,13 @@ impl GeyserPlugin for Plugin {
                 ReplicaBlockInfoVersions::V0_0_2(_info) => {
                     unreachable!("ReplicaBlockInfoVersions::V0_0_2 is not supported")
                 }
-                ReplicaBlockInfoVersions::V0_0_3(info) => info,
+                ReplicaBlockInfoVersions::V0_0_3(_info) => {
+                    unreachable!("ReplicaBlockInfoVersions::V0_0_3 is not supported")
+                }
+                ReplicaBlockInfoVersions::V0_0_4(info) => info,
             };
 
-            let message = Message::BlockMeta(blockinfo.into());
+            let message = Message::BlockMeta(Arc::new(blockinfo.into()));
             inner.send_message(message);
 
             Ok(())

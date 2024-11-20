@@ -1,10 +1,10 @@
 use {
-    serde::{de, Deserialize, Deserializer},
-    solana_geyser_plugin_interface::geyser_plugin_interface::{
+    agave_geyser_plugin_interface::geyser_plugin_interface::{
         GeyserPluginError, Result as PluginResult,
     },
+    serde::{de, Deserialize, Deserializer},
     solana_sdk::pubkey::Pubkey,
-    std::{collections::HashSet, fs::read_to_string, net::SocketAddr, path::Path},
+    std::{collections::HashSet, fs::read_to_string, net::SocketAddr, path::Path, time::Duration},
     tokio::sync::Semaphore,
     tonic::codec::CompressionEncoding,
 };
@@ -18,9 +18,6 @@ pub struct Config {
     pub grpc: ConfigGrpc,
     #[serde(default)]
     pub prometheus: Option<ConfigPrometheus>,
-    /// Action on block re-construction error
-    #[serde(default)]
-    pub block_fail_action: ConfigBlockFailAction,
     /// Collect client filters, processed slot and make it available on prometheus port `/debug_clients`
     #[serde(default)]
     pub debug_clients_http: bool,
@@ -110,6 +107,18 @@ pub struct ConfigGrpc {
     pub filters: ConfigGrpcFilters,
     /// x_token to enforce on connections
     pub x_token: Option<String>,
+    /// Filter name size limit
+    #[serde(default = "ConfigGrpc::default_filter_name_size_limit")]
+    pub filter_name_size_limit: usize,
+    /// Number of cached filter names before doing cleanup
+    #[serde(default = "ConfigGrpc::default_filter_names_size_limit")]
+    pub filter_names_size_limit: usize,
+    /// Cleanup interval once filter names reached `filter_names_size_limit`
+    #[serde(
+        default = "ConfigGrpc::default_filter_names_cleanup_interval",
+        with = "humantime_serde"
+    )]
+    pub filter_names_cleanup_interval: Duration,
 }
 
 impl ConfigGrpc {
@@ -131,6 +140,18 @@ impl ConfigGrpc {
 
     const fn unary_concurrency_limit_default() -> usize {
         Semaphore::MAX_PERMITS
+    }
+
+    const fn default_filter_name_size_limit() -> usize {
+        32
+    }
+
+    const fn default_filter_names_size_limit() -> usize {
+        1_024
+    }
+
+    const fn default_filter_names_cleanup_interval() -> Duration {
+        Duration::from_secs(1)
     }
 }
 
@@ -176,6 +197,7 @@ impl ConfigGrpcCompression {
             .into_iter()
             .map(|value| match value {
                 "gzip" => Ok(CompressionEncoding::Gzip),
+                "zstd" => Ok(CompressionEncoding::Zstd),
                 value => Err(de::Error::custom(format!(
                     "Unknown compression format: {value}"
                 ))),
@@ -197,7 +219,7 @@ pub struct ConfigGrpcFilters {
     pub transactions_status: ConfigGrpcFiltersTransactions,
     pub blocks: ConfigGrpcFiltersBlocks,
     pub blocks_meta: ConfigGrpcFiltersBlocksMeta,
-    pub entry: ConfigGrpcFiltersEntry,
+    pub entries: ConfigGrpcFiltersEntries,
 }
 
 impl ConfigGrpcFilters {
@@ -248,6 +270,7 @@ pub struct ConfigGrpcFiltersAccounts {
     pub owner_max: usize,
     #[serde(deserialize_with = "deserialize_pubkey_set")]
     pub owner_reject: HashSet<Pubkey>,
+    pub data_slice_max: usize,
 }
 
 impl Default for ConfigGrpcFiltersAccounts {
@@ -259,6 +282,7 @@ impl Default for ConfigGrpcFiltersAccounts {
             account_reject: HashSet::new(),
             owner_max: usize::MAX,
             owner_reject: HashSet::new(),
+            data_slice_max: usize::MAX,
         }
     }
 }
@@ -349,12 +373,12 @@ impl Default for ConfigGrpcFiltersBlocksMeta {
 
 #[derive(Debug, Clone, Deserialize)]
 #[serde(default, deny_unknown_fields)]
-pub struct ConfigGrpcFiltersEntry {
+pub struct ConfigGrpcFiltersEntries {
     #[serde(deserialize_with = "deserialize_usize_str")]
     pub max: usize,
 }
 
-impl Default for ConfigGrpcFiltersEntry {
+impl Default for ConfigGrpcFiltersEntries {
     fn default() -> Self {
         Self { max: usize::MAX }
     }
@@ -365,19 +389,6 @@ impl Default for ConfigGrpcFiltersEntry {
 pub struct ConfigPrometheus {
     /// Address of Prometheus service.
     pub address: SocketAddr,
-}
-
-#[derive(Debug, Clone, Copy, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub enum ConfigBlockFailAction {
-    Log,
-    Panic,
-}
-
-impl Default for ConfigBlockFailAction {
-    fn default() -> Self {
-        Self::Log
-    }
 }
 
 fn deserialize_usize_str<'de, D>(deserializer: D) -> Result<usize, D::Error>
